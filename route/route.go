@@ -20,14 +20,17 @@ func (c *RouteConfig) ArticleRoute() {
 	articleRoute.Post("/", c.ArticleHandler.CreateData)
 
 	//get data article by limit and offset
-	articleRoute.Get("/article/:limit/:offset/", c.ArticleHandler.GetDataLimitOffset)
+	articleRoute.Get("/:limit/:offset", c.ArticleHandler.GetDataLimitOffset)
 
 	//get data article by id
-	articleRoute.Get("/article/:id", c.ArticleHandler.GetDataById)
+	articleRoute.Get("/:id", c.ArticleHandler.GetDataById)
 
 	//edit article
-	articleRoute.Post("/article/:id", c.ArticleHandler.EditData)
+	articleRoute.Post("/:id", c.ArticleHandler.EditData)
 
 	//delete article
-	articleRoute.Delete("/article/:id", c.ArticleHandler.DeleteData)
+	articleRoute.Delete("/:id", c.ArticleHandler.DeleteData)
+
+	//delete article
+	articleRoute.Post("/trash/:id", c.ArticleHandler.TrashData)
 }

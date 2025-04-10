@@ -11,6 +11,7 @@ type ArticleHandler interface {
 	GetDataById(ctx fiber.Ctx) error
 	EditData(ctx fiber.Ctx) error
 	DeleteData(ctx fiber.Ctx) error
+	TrashData(ctx fiber.Ctx) error
 }
 
 type articleHandler struct {
@@ -44,5 +45,9 @@ func (c *articleHandler) EditData(ctx fiber.Ctx) error {
 }
 func (c *articleHandler) DeleteData(ctx fiber.Ctx) error {
 	res := c.UseCase.DeleteData(ctx)
+	return ctx.Status(fiber.StatusOK).JSON(res)
+}
+func (c *articleHandler) TrashData(ctx fiber.Ctx) error {
+	res := c.UseCase.TrashData(ctx)
 	return ctx.Status(fiber.StatusOK).JSON(res)
 }

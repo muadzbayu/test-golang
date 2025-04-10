@@ -12,6 +12,13 @@ type WebResponse[T any] struct {
 	Data    T      `json:"data"`
 }
 
+type ResponseLimit[T any] struct {
+	Code      string `json:"code"`
+	Message   T      `json:"message"`
+	TotalPage T      `json:"total_page"`
+	Data      T      `json:"data"`
+}
+
 // untuk reponse dalam bentuk object kosong
 func EmptyObject() interface{} {
 	return make(map[string]interface{})

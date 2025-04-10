@@ -1,6 +1,7 @@
 package article
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/go-playground/validator/v10"
@@ -12,10 +13,11 @@ import (
 
 type ArticleUseCase interface {
 	CreateData(ctx fiber.Ctx) *helper.WebResponse[interface{}]
-	GetDataLimitOffset(ctx fiber.Ctx) *helper.WebResponse[interface{}]
+	GetDataLimitOffset(ctx fiber.Ctx) *helper.ResponseLimit[interface{}]
 	GetDataById(ctx fiber.Ctx) *helper.WebResponse[interface{}]
 	EditData(ctx fiber.Ctx) *helper.WebResponse[interface{}]
 	DeleteData(ctx fiber.Ctx) *helper.WebResponse[interface{}]
+	TrashData(ctx fiber.Ctx) *helper.WebResponse[interface{}]
 }
 
 type articleUseCase struct {
@@ -35,6 +37,7 @@ func NewArticleUseCase(db *gorm.DB, validate *validator.Validate, ArticleReposit
 }
 
 func (c *articleUseCase) CreateData(ctx fiber.Ctx) *helper.WebResponse[interface{}] {
+	fmt.Println("~CREATE DATA~")
 	response := &helper.WebResponse[interface{}]{}
 	request := new(ArticleRequestV2)
 
@@ -64,21 +67,25 @@ func (c *articleUseCase) CreateData(ctx fiber.Ctx) *helper.WebResponse[interface
 	return response
 }
 
-func (c *articleUseCase) GetDataLimitOffset(ctx fiber.Ctx) *helper.WebResponse[interface{}] {
+func (c *articleUseCase) GetDataLimitOffset(ctx fiber.Ctx) *helper.ResponseLimit[interface{}] {
+	fmt.Println("~GET DATA LIMIT OFFSET~")
 	request := new(ArticleLimitOffset)
 
 	// Convert path params to int
 	limitStr := ctx.Params("limit")
 	offsetStr := ctx.Params("offset")
 
+	// check preview
+	isPreview := ctx.Query("preview") == "true"
+
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil {
-		return helper.Response(ctx, c.Config, "02", "Limit must be a number", nil)
+		return helper.ResponseLimitOffset(ctx, c.Config, "02", "Limit must be a number", 0, nil)
 	}
 
 	offset, err := strconv.Atoi(offsetStr)
 	if err != nil {
-		return helper.Response(ctx, c.Config, "02", "Offset must be a number", nil)
+		return helper.ResponseLimitOffset(ctx, c.Config, "02", "Offset must be a number", 0, nil)
 	}
 
 	// Assign to request struct
@@ -89,20 +96,22 @@ func (c *articleUseCase) GetDataLimitOffset(ctx fiber.Ctx) *helper.WebResponse[i
 	c.Validate = validator.New()
 	err = c.Validate.Struct(request)
 	if err != nil {
-		return helper.Response(ctx, c.Config, "02", err.Error(), nil)
+		return helper.ResponseLimitOffset(ctx, c.Config, "02", err.Error(), 0, nil)
 	}
 
 	tx := c.DB.WithContext(ctx.Context())
 
-	result, err := c.ArticleRepository.GetDataLimitOffset(tx, request.Limit, request.Offset)
+	result, total_page, err := c.ArticleRepository.GetDataLimitOffset(tx, request.Limit, request.Offset, isPreview)
 	if err != nil {
-		return helper.Response(ctx, c.Config, "03", err.Error(), nil)
+		return helper.ResponseLimitOffset(ctx, c.Config, "03", err.Error(), 0, nil)
 	}
 
-	return helper.Response(ctx, c.Config, "00", "Success", result)
+	return helper.ResponseLimitOffset(ctx, c.Config, "00", "Sukses", total_page, result)
+
 }
 
 func (c *articleUseCase) GetDataById(ctx fiber.Ctx) *helper.WebResponse[interface{}] {
+	fmt.Println("~GET DATA BY ID~")
 	response := &helper.WebResponse[interface{}]{}
 	request := new(ArticleId)
 
@@ -135,6 +144,7 @@ func (c *articleUseCase) GetDataById(ctx fiber.Ctx) *helper.WebResponse[interfac
 }
 
 func (c *articleUseCase) EditData(ctx fiber.Ctx) *helper.WebResponse[interface{}] {
+	fmt.Println("~EDIT ARTICLE~")
 	request := new(ArticleRequestV2)
 
 	// Get the ID from params and convert to int
@@ -193,4 +203,29 @@ func (c *articleUseCase) DeleteData(ctx fiber.Ctx) *helper.WebResponse[interface
 	}
 
 	return helper.Response(ctx, c.Config, "00", "Sukses", result)
+}
+
+func (c *articleUseCase) TrashData(ctx fiber.Ctx) *helper.WebResponse[interface{}] {
+	fmt.Println("~TRASH ARTICLE~")
+
+	// Get the ID from params and convert to int
+	idStr := ctx.Params("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		return helper.Response(ctx, c.Config, "02", "Invalid ID parameter", nil)
+	}
+
+	// Parse and validate the body
+	tx := c.DB.WithContext(ctx.Context())
+
+	result, err := c.ArticleRepository.TrashData(tx, id)
+	if err != nil {
+		return helper.Response(ctx, c.Config, "02", err.Error(), nil)
+	}
+
+	if result == 0 {
+		return helper.Response(ctx, c.Config, "02", "Delete data has failed", nil)
+	}
+
+	return helper.Response(ctx, c.Config, "00", "Success", nil)
 }
